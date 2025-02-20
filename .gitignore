@@ -1,0 +1,100 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# CMake Build files
+*.cmake
+*.ts
+*.make
+*.stamp
+
+# ROS build files
+*.dsv
+*.ps1
+*.sh 
+*.zsh
+
+# Build directories
+build/
+bin/
+lib/
+examples/build/
+examples/log/
+.vscode/
+src/CMakeFiles/
+examples/visualize/install/
+examples/visualize/log/
+examples/visualize/build/
+CMakeFiles/
+examples/CMakeFiles/
+examples/install/
+examples/ament_cmake_core/
+examples/Makefile
+examples/CTestCustom.cmake
+examples/CTestTestfile.cmake
+examples/examples/cmake_install.cmake
+examples/log/
+Makefile
+
+# Visual Studio files
+.vs/
+*.user
+*.aps
+*.pdb
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.ilk
+*.log
+[Bb]in
+[Dd]ebug*/
+*.lib
+*.sbr
+obj/
+[Rr]elease*/
+_ReSharper*/
+[Tt]est[Rr]esult*
+*.opensdf
+*.sdf
+
+# CLion files
+.idea/
+cmake-build-*/
+
+# Other
+*.swp
+*~
+
+build/*
