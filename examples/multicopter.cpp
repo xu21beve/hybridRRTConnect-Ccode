@@ -8,6 +8,8 @@
 #include "ompl/control/spaces/RealVectorControlSpace.h"
 #include <fstream> // For file I/O
 #include <iomanip> // For formatting output
+#include "ompl/control/SpaceInformation.h"
+#include <ompl/control/ODESolver.h>
 
 using namespace CommonMath;
 
@@ -266,7 +268,7 @@ bool Xu(double x1, double x2)
 }
 
 /** \brief Jump set is true whenever the multicopter is within the area of the c-shaped obstacle. */
-bool jumpSet(ompl::geometric::HyRRT::Motion *motion)
+bool jumpSet(ompl::control::HyRRT::Motion *motion)
 {
     double x1 = motion->state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0];
     double x2 = motion->state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1];
@@ -280,13 +282,13 @@ bool jumpSet(ompl::geometric::HyRRT::Motion *motion)
 }
 
 /** \brief Flow set is true whenever the multicopter is outside of the area of the c-shaped obstacle. */
-bool flowSet(ompl::geometric::HyRRT::Motion *motion)
+bool flowSet(ompl::control::HyRRT::Motion *motion)
 {
     return !jumpSet(motion);
 }
 
 /** \brief Unsafe set is true whenever the multicopter is outside of the 6x7 rectangular planning space. */
-bool unsafeSet(ompl::geometric::HyRRT::Motion *motion)
+bool unsafeSet(ompl::control::HyRRT::Motion *motion)
 {
     std::vector<double> x_cur = {motion->state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0], motion->state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1], motion->state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[2], motion->state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[3]};
     if (x_cur[0] < 0.5 || x_cur[0] > 6 || x_cur[1] < 0 || x_cur[1] > 7 || Xu(x_cur[0], x_cur[1]))
@@ -361,7 +363,7 @@ ompl::base::State *discreteSimulator(ompl::base::State *x_cur, std::vector<doubl
 }
 
 /** \brief Collision checker for the multicopter, courtesy of Berkeley Hybrid Systems Lab. */
-bool collisionChecker(ompl::geometric::HyRRT::Motion *motion, std::function<bool(ompl::geometric::HyRRT::Motion *motion)> obstacleSet, ompl::base::State *new_state, double *collisionTime)
+bool collisionChecker(ompl::control::HyRRT::Motion *motion, std::function<bool(ompl::control::HyRRT::Motion *motion)> obstacleSet, ompl::base::State *new_state, double *collisionTime)
 {
     double ts = motion->solutionPair->at(0)->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::HybridTimeStateSpace::StateType>(1)->position;
     double tf = new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::HybridTimeStateSpace::StateType>(1)->position;
@@ -423,10 +425,31 @@ bool collisionChecker(ompl::geometric::HyRRT::Motion *motion, std::function<bool
     return collision && run;
 }
 
+void flowODE(const ompl::control::ODESolver::StateType& q, const ompl::control::Control* c, ompl::control::ODESolver::StateType& qdot)
+{
+    // Retrieve control values.  Velocity is the first entry, steering angle is second.
+    const double *u = c->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
+    const double velocity = u[0];
+    const double steeringAngle = u[1];
+ 
+    // Retrieve the current orientation of the car.  The memory for ompl::base::SE2StateSpace is mapped as:
+    // 0: x
+    // 1: y
+    // 2: theta
+    const double theta = q[2];
+ 
+    // Ensure qdot is the same size as q.  Zero out all values.
+    qdot.resize(q.size(), 0);
+ 
+    qdot[0] = velocity * cos(theta);            // x-dot
+    qdot[1] = velocity * sin(theta);            // y-dot
+    qdot[2] = velocity * tan(steeringAngle);    // theta-dot
+}
+
 int main()
 {
-    // std::uint_fast32_t seed = 5;
-    // ompl::RNG::setSeed(seed);
+    std::uint_fast32_t seed = 5;
+    ompl::RNG::setSeed(seed);
     // Set the bounds of space
     ompl::base::RealVectorStateSpace *statespace = new ompl::base::RealVectorStateSpace(0);
     statespace->addDimension(0.5, 6.0);
@@ -440,9 +463,16 @@ int main()
     ompl::base::HybridStateSpace *hybridSpace = new ompl::base::HybridStateSpace(stateSpacePtr);
     ompl::base::StateSpacePtr hybridSpacePtr(hybridSpace);
 
-    // Construct a space information instance for this state space
-    ompl::base::SpaceInformationPtr si(new ompl::base::SpaceInformation(hybridSpacePtr));
+    // Define control space
+    ompl::control::RealVectorControlSpace *controlSpace_ = new ompl::control::RealVectorControlSpace(hybridSpacePtr, 1);
+    ompl::control::ControlSpacePtr controlSpacePtr(controlSpace_);
 
+    // Construct a space information instance for this state space
+    ompl::control::SpaceInformationPtr si(new ompl::control::SpaceInformation(hybridSpacePtr, controlSpacePtr));
+    ompl::control::ODESolverPtr odeSolver (new ompl::control::ODEBasicSolver<> (si, &flowODE));
+    
+    si->setStatePropagator(ompl::control::ODESolver::getStatePropagator(odeSolver));
+    si->setPropagationStepSize(0.01);
     si->setup();
 
     // Set start state to be (1, 2)
@@ -465,7 +495,7 @@ int main()
     // Set the start and goal states
     pdef->setStartAndGoalStates(start, goal);
 
-    ompl::geometric::HyRRT cHyRRT(si);
+    ompl::control::HyRRT cHyRRT(si);
 
     // Set parameters
     cHyRRT.setProblemDefinition(pdef);
@@ -485,6 +515,6 @@ int main()
     ompl::base::PlannerStatus solved = cHyRRT.solve(ompl::base::timedPlannerTerminationCondition(20));
     // print path to RViz2 data file
     std::ofstream outFile("../../examples/visualize/src/points.txt");
-    pdef->getSolutionPath()->as<ompl::geometric::PathGeometric>()->printAsMatrix(outFile);
+    pdef->getSolutionPath()->as<ompl::control::PathControl>()->printAsMatrix(outFile);
     std::cout << "solution status: " << solved << std::endl;
 }

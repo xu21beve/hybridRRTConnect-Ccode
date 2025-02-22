@@ -20,8 +20,8 @@ add_executable(visualize visualize/src/ros_visualize.cpp)
 target_link_libraries(visualize ${RCLCPP_LIBRARIES})
 
 # Add executable for bouncing_ball.cpp
-add_executable(bouncing_ball bouncing_ball.cpp)
-target_link_libraries(bouncing_ball HyRRT ${OMPL_LIBRARIES})
+# add_executable(bouncing_ball bouncing_ball.cpp)
+# target_link_libraries(bouncing_ball HyRRT ${OMPL_LIBRARIES})
 
 project(visualize)
 

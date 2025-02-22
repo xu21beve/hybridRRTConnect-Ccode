@@ -46,40 +46,46 @@
 
 namespace base = ompl::base;
 namespace tools = ompl::tools;
+namespace control = ompl::control;
 
 using namespace std::chrono;
 
-ompl::geometric::HyRRT::HyRRT(const base::SpaceInformationPtr &si_) : base::Planner(si_, "HyRRT")
+ompl::control::HyRRT::HyRRT(const control::SpaceInformationPtr &si_) : base::Planner(si_, "HyRRT")
 {
     specs_.approximateSolutions = false;
-    specs_.directed = true;
+    siC_ = si_.get();
 }
 
-ompl::geometric::HyRRT::~HyRRT() {}
+ompl::control::HyRRT::~HyRRT() {}
 
-void ompl::geometric::HyRRT::initTree(void)
+void ompl::control::HyRRT::initTree(void)
 {
     // get input states with PlannerInputStates helper, pis_
     while (const base::State *st = pis_.nextStart())
     {
-        auto *motion = new Motion(si_);
+        auto *motion = new Motion(siC_);
         si_->copyState(motion->state, st);
+        siC_->nullControl(motion->control);
         motion->root = motion->state;
         ompl::base::HybridStateSpace::setStateTime(motion->state, 0.0);
         ompl::base::HybridStateSpace::setStateJumps(motion->state, 0);
         // Add start motion to the tree
         nn_->add(motion);
     }
+
+    if (!sampler_)
+        sampler_ = siC_->allocStateSampler();
+    if (!controlSampler_)
+        controlSampler_ = siC_->allocDirectedControlSampler();
 }
 
-void ompl::geometric::HyRRT::randomSample(Motion *randomMotion)
+void ompl::control::HyRRT::randomSample(Motion *randomMotion)
 {
-    sampler_ = si_->allocStateSampler();
     // Replace later with the ompl sampler, for now leave as custom
     sampler_->sampleUniform(randomMotion->state);
 }
 
-base::PlannerStatus ompl::geometric::HyRRT::solve(const base::PlannerTerminationCondition &ptc)
+base::PlannerStatus ompl::control::HyRRT::solve(const base::PlannerTerminationCondition &ptc)
 {
     // Initialization
     // Make sure the planner is configured correctly
@@ -99,7 +105,7 @@ base::PlannerStatus ompl::geometric::HyRRT::solve(const base::PlannerTermination
     initTree();
 
     // Allocate memory for a random motion
-    auto *randomMotion = new Motion(si_);
+    auto *randomMotion = new Motion(siC_);
 
     // Main Planning Loop
     // Periodically check if the termination condition is met
@@ -109,7 +115,7 @@ base::PlannerStatus ompl::geometric::HyRRT::solve(const base::PlannerTermination
     nextIteration:
         randomSample(randomMotion); // Randomly sample a state from the planning space
 
-        auto *solution = new Motion(si_);
+        auto *solution = new Motion(siC_);
 
         // Generate random maximum flow time
         double random = rand();
@@ -163,12 +169,11 @@ base::PlannerStatus ompl::geometric::HyRRT::solve(const base::PlannerTermination
                 double tf = ompl::base::HybridStateSpace::getStateTime(intermediateState);
 
                 // Create motion to add to tree
-                auto *motion = new Motion(si_);
+                auto *motion = new Motion(siC_);
                 si_->copyState(motion->state, intermediateState);
                 motion->parent = parentMotion;
                 motion->solutionPair = intermediateStates; // Set the new motion solutionPair
-                for (int i = 0; i < intermediateStates->size(); i++)
-                    motion->inputs->push_back(flowInput);
+                motion->control = flowInput;
 
                 // Discard state if it is in the unsafe set
                 if (unsafeSet_(motion))
@@ -221,10 +226,10 @@ base::PlannerStatus ompl::geometric::HyRRT::solve(const base::PlannerTermination
             newState = this->discreteSimulator_(previousState, jumpInputs, newState);
 
             // Create motion to add to tree
-            auto *motion = new Motion(si_);
+            auto *motion = new Motion(siC_);
             si_->copyState(motion->state, newState);
             motion->parent = collisionParentMotion;
-            motion->inputs->push_back(jumpInput);
+            motion->control = jumpInput;
             ompl::base::HybridStateSpace::setStateTime(motion->state, ompl::base::HybridStateSpace::getStateTime(previousState));
             ompl::base::HybridStateSpace::setStateJumps(motion->state, ompl::base::HybridStateSpace::getStateJumps(previousState) + 1);
 
@@ -244,7 +249,7 @@ base::PlannerStatus ompl::geometric::HyRRT::solve(const base::PlannerTermination
     return base::PlannerStatus::UNKNOWN;
 }
 
-base::PlannerStatus ompl::geometric::HyRRT::constructSolution(Motion *last_motion)
+base::PlannerStatus ompl::control::HyRRT::constructSolution(Motion *last_motion)
 {
     vector<Motion *> trajectory;
     nn_->list(trajectory);
@@ -265,7 +270,7 @@ base::PlannerStatus ompl::geometric::HyRRT::constructSolution(Motion *last_motio
     }
 
     // Create a new path object to store the solution path
-    auto path(std::make_shared<PathGeometric>(si_));
+    auto path(std::make_shared<control::PathControl>(si_));
 
     // Reserve space for the path states
     path->getStates().reserve(pathSize);
@@ -279,19 +284,19 @@ base::PlannerStatus ompl::geometric::HyRRT::constructSolution(Motion *last_motio
         { // A jump motion does not contain an edge
             for (auto state : *(mpath[i]->solutionPair))
             {
-                path->append(state); // Need to make a new motion to append to trajectory matrix
+                path->append(state, mpath[i]->control, siC_->getPropagationStepSize()); // Need to make a new motion to append to trajectory matrix
             }
         }
         else
         { // If a jump motion
-            path->append(mpath[i]->state);
+            path->append(mpath[i]->state, mpath[i]->control, 0);
+
         }
     }
 
     // Add the solution path to the problem definition
     pdef_->addSolutionPath(path, finalDistance > 0.0, finalDistance, getName());
-     pdef_->getSolutionPath()->as<ompl::geometric::PathGeometric>()->printAsMatrix(
-      std::cout);
+     pdef_->getSolutionPath()->as<ompl::control::PathControl>()->printAsMatrix(std::cout);
 
     // Return a status indicating that an exact solution has been found
     if (finalDistance > 0.0)
@@ -300,25 +305,26 @@ base::PlannerStatus ompl::geometric::HyRRT::constructSolution(Motion *last_motio
         return base::PlannerStatus::EXACT_SOLUTION;
 }
 
-void ompl::geometric::HyRRT::clear()
+void ompl::control::HyRRT::clear()
 {
     Planner::clear();
+    controlSampler_.reset();
     // clear the data structures here
 }
 
-void ompl::geometric::HyRRT::setup()
+void ompl::control::HyRRT::setup()
 {
     Planner::setup();
     tools::SelfConfig sc(si_, getName());
     if (!nn_)
         nn_.reset(tools::SelfConfig::getDefaultNearestNeighbors<Motion *>(this));
     nn_->setDistanceFunction([this](const Motion *a, const Motion *b)
-                             { return ompl::geometric::HyRRT::distanceFunc_(a->state, b->state); });
+                             { return ompl::control::HyRRT::distanceFunc_(a->state, b->state); });
 }
 
-void ompl::geometric::HyRRT::freeMemory(void) {}
+void ompl::control::HyRRT::freeMemory(void) {}
 
-void ompl::geometric::HyRRT::getPlannerData(base::PlannerData &data) const
+void ompl::control::HyRRT::getPlannerData(base::PlannerData &data) const
 {
     Planner::getPlannerData(data);
 

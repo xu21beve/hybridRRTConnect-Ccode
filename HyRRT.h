@@ -34,14 +34,14 @@
 
 /* Author: Beverly Xu */
 
-#ifndef OMPL_GEOMETRIC_PLANNERS_RRT_HYRRT_
-#define OMPL_GEOMETRIC_PLANNERS_RRT_HYRRT_
+#ifndef OMPL_CONTROL_PLANNERS_RRT_HYRRT_
+#define OMPL_CONTROL_PLANNERS_RRT_HYRRT_
 
 #include "ompl/base/spaces/RealVectorStateSpace.h"
+#include "ompl/control/ControlSpace.h"
+#include "ompl/control/spaces/RealVectorControlSpace.h"
 #include "ompl/datastructures/NearestNeighbors.h"
-#include "ompl/geometric/planners/PlannerIncludes.h"
-#include "ompl/base/GoalTypes.h"
-#include "ompl/base/Planner.h"
+#include "ompl/control/planners/PlannerIncludes.h"
 #include "ompl/control/Control.h"
 #include "HybridStateSpace.h"
 
@@ -49,7 +49,7 @@ using namespace std;
 
 namespace ompl
 {
-    namespace geometric
+    namespace control
     {
         /**
            @anchor HyRRT
@@ -77,7 +77,7 @@ namespace ompl
         {
         public:
             /** \brief Constructor */
-            HyRRT(const base::SpaceInformationPtr &si);
+            HyRRT(const control::SpaceInformationPtr &si);
 
             /** \brief Destructor */
             ~HyRRT() override;
@@ -120,7 +120,7 @@ namespace ompl
                 Motion() = default;
 
                 /// \brief Constructor that allocates memory for the state
-                Motion(const base::SpaceInformationPtr &si) : state(si->allocState()) {}
+                Motion(const control::SpaceInformation *si) : state(si->allocState()), control(si->allocControl()) {}
 
                 /// \brief Destructor
                 ~Motion() = default;
@@ -138,8 +138,11 @@ namespace ompl
                 /// \brief The integration steps defining the solution pair of the motion, between the parent and child vertices
                 std::vector<base::State *> *solutionPair{nullptr};
 
-                /// \brief The inputs associated with the solution pair
-                std::vector<ompl::control::Control *> *inputs = new std::vector<ompl::control::Control *>();
+                /** \brief The control contained by the motion */
+                control::Control *control{nullptr};
+
+                // /// \brief The inputs associated with the solution pair
+                // std::vector<ompl::control::Control *> *inputs = new std::vector<ompl::control::Control *>();
             };
 
             /** \brief Free the memory allocated by this planner */
@@ -419,6 +422,26 @@ namespace ompl
                     throw Exception("Flow step length (flowStepDuration_) not set");
             }
 
+            double getFlowInput(const control::Control *control)
+            {
+                return control->as<CompoundControl>()->components[0]->as<RealVectorControlSpace::ControlType>()->values[0];
+            }
+
+            double getJumpInput(const control::Control *control)
+            {
+                return control->as<CompoundControl>()->components[1]->as<RealVectorControlSpace::ControlType>()->values[0];
+            }
+
+            void setFlowInput(control::Control *control, double value)
+            {
+                control->as<CompoundControl>()->components[0]->as<RealVectorControlSpace::ControlType>()->values[0] = value;
+            }
+
+            void setJumpInput(control::Control *control, double value)
+            {
+                control->as<CompoundControl>()->components[1]->as<RealVectorControlSpace::ControlType>()->values[0] = value;
+            }
+
         protected:
             /** 
              * \brief Random sampler for the full vector of flow input. 
@@ -502,6 +525,12 @@ namespace ompl
 
             /// \brief Name of input sampling method, default is "uniform"
             inputSamplingMethods_ inputSamplingMethod_{UNIFORM_01};
+
+            /// \brief Control Sampler
+            control::DirectedControlSamplerPtr controlSampler_;
+
+            /// \brief The base::SpaceInformation cast as control::SpaceInformation, for convenience
+            control::SpaceInformation *siC_;
 
             /** 
              * \brief Compute distance between states, default is Euclidean distance 
