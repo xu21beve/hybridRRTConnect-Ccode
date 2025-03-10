@@ -297,33 +297,33 @@ bool unsafeSet(ompl::control::HyRRT::Motion *motion)
 }
 
 /** \brief Simulates the dynamics of the multicopter when in flow regime, with no nonnegligble forces other than input acceleration. */
-ompl::base::State *continuousSimulator(std::vector<double> inputs, ompl::base::State *x_cur, double tFlow, ompl::base::State *new_state)
-{
-    double x1 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0];
-    double x2 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1];
-    double x3 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[2];
-    double x4 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[3];
-    double x5 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[4];
-    double x6 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[5];
+// ompl::base::State *continuousSimulator(std::vector<double> inputs, ompl::base::State *x_cur, double tFlow, ompl::base::State *new_state)
+// {
+//     double x1 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0];
+//     double x2 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1];
+//     double x3 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[2];
+//     double x4 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[3];
+//     double x5 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[4];
+//     double x6 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[5];
 
-    x1 = x1 + x3 * tFlow + x5 * pow(tFlow, 2) / 2; // x = v0 * t + 1/2(at^2)
-    x2 = x2 + x4 * tFlow + x6 * pow(tFlow, 2) / 2; // x = v0 * t + 1/2(at^2)
-    x3 = x3 + (x5)*tFlow; // v = v0 + at
-    x4 = x4 + (x6)*tFlow;
-    x5 += inputs[0];
-    x6 += inputs[1]; // Set control input to 0 for flow
+//     x1 = x1 + x3 * tFlow + x5 * pow(tFlow, 2) / 2; // x = v0 * t + 1/2(at^2)
+//     x2 = x2 + x4 * tFlow + x6 * pow(tFlow, 2) / 2; // x = v0 * t + 1/2(at^2)
+//     x3 = x3 + (x5)*tFlow; // v = v0 + at
+//     x4 = x4 + (x6)*tFlow;
+//     x5 += inputs[0];
+//     x6 += inputs[1]; // Set control input to 0 for flow
 
-    new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0] = x1;
-    new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1] = x2;
-    new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[2] = x3;
-    new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[3] = x4;
-    new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[4] = x5;
-    new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[5] = x6;
-    return new_state;
-}
+//     new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0] = x1;
+//     new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1] = x2;
+//     new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[2] = x3;
+//     new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[3] = x4;
+//     new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[4] = x5;
+//     new_state->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[5] = x6;
+//     return new_state;
+// }
 
 /** \brief Simulates the dynamics of the multicopter when in jump regime, with input from the surface. */
-ompl::base::State *discreteSimulator(ompl::base::State *x_cur, std::vector<double> u, ompl::base::State *new_state)
+ompl::base::State *discreteSimulator(ompl::base::State *x_cur, const ompl::control::Control *u, ompl::base::State *new_state)
 {
     double x1 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0];
     double x2 = x_cur->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1];
@@ -429,21 +429,24 @@ void flowODE(const ompl::control::ODESolver::StateType& q, const ompl::control::
 {
     // Retrieve control values.  Velocity is the first entry, steering angle is second.
     const double *u = c->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
-    const double velocity = u[0];
-    const double steeringAngle = u[1];
+    const double u_1 = u[0];
+    const double u_2 = u[1];
  
-    // Retrieve the current orientation of the car.  The memory for ompl::base::SE2StateSpace is mapped as:
-    // 0: x
-    // 1: y
-    // 2: theta
-    const double theta = q[2];
+    // Retrieve the current orientation of the multicopter.
+    const double v_1 = q[2];
+    const double v_2 = q[3];
+    const double a_1 = q[4];
+    const double a_2 = q[5];
  
     // Ensure qdot is the same size as q.  Zero out all values.
     qdot.resize(q.size(), 0);
  
-    qdot[0] = velocity * cos(theta);            // x-dot
-    qdot[1] = velocity * sin(theta);            // y-dot
-    qdot[2] = velocity * tan(steeringAngle);    // theta-dot
+    qdot[0] = v_1;
+    qdot[1] = v_2;
+    qdot[2] = a_1;
+    qdot[3] = a_2;
+    qdot[4] = u_1;
+    qdot[5] = u_2;
 }
 
 int main()
@@ -454,30 +457,64 @@ int main()
     ompl::base::RealVectorStateSpace *statespace = new ompl::base::RealVectorStateSpace(0);
     statespace->addDimension(0.5, 6.0);
     statespace->addDimension(0, 5);
-    statespace->addDimension(-3, 8);
-    statespace->addDimension(-3, 100000);
-    statespace->addDimension(-3, 3);
-    statespace->addDimension(-3, 3);
+    statespace->addDimension(-10, 10);
+    statespace->addDimension(-10, 100000);
+    statespace->addDimension(-10, 10);
+    statespace->addDimension(-10, 10);
 
     ompl::base::StateSpacePtr stateSpacePtr(statespace);
     ompl::base::HybridStateSpace *hybridSpace = new ompl::base::HybridStateSpace(stateSpacePtr);
     ompl::base::StateSpacePtr hybridSpacePtr(hybridSpace);
 
     // Define control space
-    ompl::control::RealVectorControlSpace *controlSpace_ = new ompl::control::RealVectorControlSpace(hybridSpacePtr, 1);
-    ompl::control::ControlSpacePtr controlSpacePtr(controlSpace_);
+    ompl::control::RealVectorControlSpace *flowControlSpace = new ompl::control::RealVectorControlSpace(hybridSpacePtr, 2);
+    ompl::control::RealVectorControlSpace *jumpControlSpace = new ompl::control::RealVectorControlSpace(hybridSpacePtr, 2);
+
+    ompl::base::RealVectorBounds flowBounds(2);
+    flowBounds.setLow(0, -0.5);
+    flowBounds.setLow(1, -1);
+    flowBounds.setHigh(0, 1);
+    flowBounds.setHigh(1, 1);
+    flowControlSpace->setBounds(flowBounds);
+
+    ompl::base::RealVectorBounds jumpBounds(2);
+    flowBounds.setLow(0, 0);
+    flowBounds.setLow(0, 0);
+    flowBounds.setHigh(0, 0);
+    flowBounds.setHigh(0, 0);
+    jumpControlSpace->setBounds(jumpBounds);
+
+    ompl::control::RealVectorControlUniformSampler flowControlSampler(flowControlSpace);
+    flowControlSpace->setControlSamplerAllocator([flowControlSpace](const ompl::control::ControlSpace *space) -> ompl::control::ControlSamplerPtr {
+        return std::make_shared<ompl::control::RealVectorControlUniformSampler>(space);
+    });
+
+    ompl::control::RealVectorControlUniformSampler jumpControlSampler(jumpControlSpace);     // Doesn't do anything because the bounds for jump input are just [0, 0], but here for demonstration
+    jumpControlSpace->setControlSamplerAllocator([jumpControlSpace](const ompl::control::ControlSpace *space) -> ompl::control::ControlSamplerPtr {
+        return std::make_shared<ompl::control::RealVectorControlUniformSampler>(space);
+    });
+
+    ompl::control::ControlSpacePtr flowControlSpacePtr(flowControlSpace);
+    ompl::control::ControlSpacePtr jumpControlSpacePtr(jumpControlSpace);
+
+    ompl::control::CompoundControlSpace *controlSpace = new ompl::control::CompoundControlSpace(hybridSpacePtr);
+    controlSpace->addSubspace(flowControlSpacePtr);
+    controlSpace->addSubspace(jumpControlSpacePtr);
+
+    ompl::control::ControlSpacePtr controlSpacePtr(controlSpace);
 
     // Construct a space information instance for this state space
     ompl::control::SpaceInformationPtr si(new ompl::control::SpaceInformation(hybridSpacePtr, controlSpacePtr));
-    ompl::control::ODESolverPtr odeSolver (new ompl::control::ODEBasicSolver<> (si, &flowODE));
+    ompl::control::ODESolverPtr odeSolver (new ompl::control::ODEBasicSolver<> (si, &flowODE, -0.01));
     
     si->setStatePropagator(ompl::control::ODESolver::getStatePropagator(odeSolver));
-    si->setPropagationStepSize(0.01);
+    si->setPropagationStepSize(-0.01);
+    si->setMinMaxControlDuration(1, 1);
     si->setup();
 
     // Set start state to be (1, 2)
     ompl::base::ScopedState<> start(hybridSpacePtr);
-    start->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0] = 0.55;
+    start->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0] = 5;
     start->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1] = 2;
     start->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[2] = 0;
     start->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[3] = 0;
@@ -486,8 +523,8 @@ int main()
 
     // Set goal state to be (5, 4)
     ompl::base::ScopedState<> goal(hybridSpacePtr);
-    goal->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0] = 5;
-    goal->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1] = 4;
+    goal->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[0] = 1;
+    goal->as<ompl::base::HybridStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(0)->values[1] = 2;
 
     // Create a problem instance
     ompl::base::ProblemDefinitionPtr pdef(new ompl::base::ProblemDefinition(si));
@@ -501,14 +538,14 @@ int main()
     cHyRRT.setProblemDefinition(pdef);
     cHyRRT.setup();
     cHyRRT.setDistanceFunction(distanceFunc);
-    cHyRRT.setContinuousSimulator(continuousSimulator);
+    // cHyRRT.setContinuousSimulator(continuousSimulator);
     cHyRRT.setDiscreteSimulator(discreteSimulator);
     cHyRRT.setFlowSet(flowSet);
     cHyRRT.setJumpSet(jumpSet);
     cHyRRT.setTm(0.5);
     cHyRRT.setFlowStepDuration(0.01);
-    cHyRRT.setFlowInputRange(std::vector<double>{-0.5, -1}, std::vector<double>{1, 1});
-    cHyRRT.setJumpInputRange(std::vector<double>{0, 0}, std::vector<double>{0, 0});
+    // cHyRRT.setFlowInputRange(std::vector<double>{-5, -10}, std::vector<double>{10, 10});
+    // cHyRRT.setJumpInputRange(std::vector<double>{0, 0}, std::vector<double>{0, 0});
     cHyRRT.setUnsafeSet(unsafeSet);
     cHyRRT.setCollisionChecker(collisionChecker);
     // attempt to solve the planning problem within 10 seconds

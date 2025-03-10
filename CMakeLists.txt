@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5...3.20)
-project(cHyRRT VERSION 0.1.0 LANGUAGES C CXX)
+project(HyRRT-Connect VERSION 0.1.0 LANGUAGES C CXX)
 
 # set(CMAKE_TOOLCHAIN_FILE ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 # set(Boost_ROOT "${VCPKG_ROOT}/installed/x64-windows")
@@ -20,9 +20,6 @@ add_subdirectory(examples)
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
-
-project(cHyRRT CXX)
-
 set(CMAKE_CXX_STANDARD 11)
 
 # Enable all warnings, treat warnings as errors, compile with highest optimizaiton

@@ -3,10 +3,10 @@ find_package(ompl REQUIRED)
 # find_package(ament_index_cpp REQUIRED)
 # find_package(rosidl_typesupport_c REQUIRED)
 
-add_library(HyRRT HyRRT.cpp)
+add_library(cHyRRT HyRRT.cpp)
 add_library(HybridStateSpace HybridStateSpace.cpp)
 add_library(HybridTimeStateSpace HybridTimeStateSpace.cpp)
-target_link_libraries(HyRRT HybridStateSpace HybridTimeStateSpace ${OMPL_LIBRARIES})
+target_link_libraries(cHyRRT HybridStateSpace HybridTimeStateSpace ${OMPL_LIBRARIES})
 
 set(CMAKE_TOOLCHAIN_FILE ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 

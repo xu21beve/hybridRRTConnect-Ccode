@@ -273,7 +273,7 @@ namespace ompl
              * \brief Define the discrete dynamics simulator
              * @param function the discrete simulator associated with the hybrid system.
              */
-            void setDiscreteSimulator(std::function<base::State *(base::State *curState, std::vector<double> u, base::State *newState)> function)
+            void setDiscreteSimulator(std::function<base::State *(base::State *curState, const control::Control *u, base::State *newState)> function)
             {
                 discreteSimulator_ = function;
             }
@@ -282,12 +282,19 @@ namespace ompl
              * \brief Define the continuous dynamics simulator
              * @param function the continuous simulator associated with the hybrid system.
              */
-            void setContinuousSimulator(std::function<base::State *(std::vector<double> inputs, base::State *curState, double tFlowMax,
+            void setContinuousSimulator(std::function<base::State *(const control::Control *u, base::State *curState, double tFlowMax,
                                                                     base::State *newState)>
                                             function)
             {
                 continuousSimulator_ = function;
             }
+
+            /** \brief Simulates the dynamics of the multicopter when in flow regime, with no nonnegligble forces other than input acceleration. */
+            std::function<ompl::base::State *(const control::Control *control, ompl::base::State *x_cur, double tFlow, ompl::base::State *new_state)> continuousSimulator = [this](const control::Control *control, base::State *x_cur, double tFlow, base::State *new_state)
+            {
+                siC_->getStatePropagator()->propagate(x_cur, control, tFlow, new_state);
+                return new_state;
+            };
 
             /** 
              * \brief Define the collision checker
@@ -410,16 +417,16 @@ namespace ompl
                     throw Exception("Unsafe set not set");
                 if (!tM_)
                     throw Exception("Max flow propagation time (Tm) no set");
-                if (maxJumpInputValue_.size() == 0)
-                    throw Exception("Max input value (maxJumpInputValue) not set");
-                if (minJumpInputValue_.size() == 0)
-                    throw Exception("Min input value (minJumpInputValue) not set");
-                if (maxFlowInputValue_.size() == 0)
-                    throw Exception("Max input value (maxFlowInputValue) not set");
-                if (minFlowInputValue_.size() == 0)
-                    throw Exception("Min input value (minFlowInputValue) not set");
-                if (!flowStepDuration_)
-                    throw Exception("Flow step length (flowStepDuration_) not set");
+                // if (maxJumpInputValue_.size() == 0)
+                //     throw Exception("Max input value (maxJumpInputValue) not set");
+                // if (minJumpInputValue_.size() == 0)
+                //     throw Exception("Min input value (minJumpInputValue) not set");
+                // if (maxFlowInputValue_.size() == 0)
+                //     throw Exception("Max input value (maxFlowInputValue) not set");
+                // if (minFlowInputValue_.size() == 0)
+                //     throw Exception("Min input value (minFlowInputValue) not set");
+                // if (!flowStepDuration_)
+                //     throw Exception("Flow step length (flowStepDuration_) not set");
             }
 
             double getFlowInput(const control::Control *control)
@@ -443,6 +450,17 @@ namespace ompl
             }
 
         protected:
+
+            const static ompl::control::Control *getFlowControl(const ompl::control::Control *control)
+            {
+                return control->as<CompoundControl>()->as<ompl::control::Control>(0);
+            }
+
+            const static ompl::control::Control *getJumpControl(const ompl::control::Control *control)
+            {
+                return control->as<CompoundControl>()->as<ompl::control::Control>(1);
+            }
+
             /** 
              * \brief Random sampler for the full vector of flow input. 
              * @return a vector of inputs (as doubles) sampled
@@ -574,7 +592,7 @@ namespace ompl
              * @param newState The newly propagated state
              * @return The newly propagated state
              */
-            std::function<base::State *(base::State *curState, std::vector<double> u, base::State *newState)> discreteSimulator_;
+            std::function<base::State *(base::State *curState, const control::Control *u, base::State *newState)> discreteSimulator_;
 
             /** 
              * \brief Function that returns true if a motion intersects with the jump set, and false if not. 
@@ -605,7 +623,7 @@ namespace ompl
              * @param newState The newly propagated state
              * @return The newly propagated state
              */
-            std::function<base::State *(std::vector<double> input, base::State *curState, double tFlowMax, base::State *newState)> continuousSimulator_;
+            std::function<base::State *(const control::Control *u, base::State *curState, double tFlowMax, base::State *newState)> continuousSimulator_;
 
             /// \brief Random sampler for the input. Default constructor always seeds a different value, and returns a uniform real distribution.
             RNG *randomSampler_ = new RNG();

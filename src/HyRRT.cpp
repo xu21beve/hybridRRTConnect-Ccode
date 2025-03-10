@@ -91,6 +91,7 @@ base::PlannerStatus ompl::control::HyRRT::solve(const base::PlannerTerminationCo
     // Make sure the planner is configured correctly
     // Ensures that there is at least one input state and a goal object specified
     checkValidity();
+    this->setContinuousSimulator(continuousSimulator);
     checkMandatoryParametersSet();
 
     // Define control space
@@ -142,14 +143,14 @@ base::PlannerStatus ompl::control::HyRRT::solve(const base::PlannerTerminationCo
         base::State *parentState = si_->allocState();
         si_->copyState(parentState, previousState);
 
+        control::Control *compoundControl = siC_->allocControl();
+        siC_->allocControlSampler()->sample(compoundControl);
+
         // Simulate in either the jump or flow regime
         if (!priority)
         { // Flow
             // Randomly sample the flow inputs
-            flowInputs = sampleFlowInputs_();
-            control::Control *flowInput = controlSpace_->allocControl();
-            for (int i = 0; i < flowInputs.size(); i++)
-                flowInput->as<control::RealVectorControlSpace::ControlType>()->values[i] = flowInputs[i];
+            // flowInputs = sampleFlowInputs_();
 
             while (tFlow < randomFlowTimeMax && flowSet_(parentMotion))
             {
@@ -157,9 +158,14 @@ base::PlannerStatus ompl::control::HyRRT::solve(const base::PlannerTerminationCo
 
                 // Find new state with continuous simulation
                 base::State *intermediateState = si_->allocState();
-                intermediateState = this->continuousSimulator_(flowInputs, previousState, flowStepDuration_, intermediateState);
+
+                intermediateState = this->continuousSimulator_(getFlowControl(compoundControl), previousState, -flowStepDuration_, intermediateState);
                 ompl::base::HybridStateSpace::setStateTime(intermediateState, ompl::base::HybridStateSpace::getStateTime(previousState) + flowStepDuration_);
                 ompl::base::HybridStateSpace::setStateJumps(intermediateState, ompl::base::HybridStateSpace::getStateJumps(previousState));
+
+                // std::cout << "flow input: " << getFlowControl(compoundControl)->as<ompl::control::RealVectorControlSpace::ControlType>()->values[0] << ", " << getFlowControl(compoundControl)->as<ompl::control::RealVectorControlSpace::ControlType>()->values[1] << std::endl;
+                // siC_->printControl(compoundControl);
+                si_->printState(intermediateState);
 
                 // Add new intermediate state to solutionPair
                 intermediateStates->push_back(intermediateState);
@@ -173,7 +179,8 @@ base::PlannerStatus ompl::control::HyRRT::solve(const base::PlannerTerminationCo
                 si_->copyState(motion->state, intermediateState);
                 motion->parent = parentMotion;
                 motion->solutionPair = intermediateStates; // Set the new motion solutionPair
-                motion->control = flowInput;
+
+                motion->control = compoundControl;
 
                 // Discard state if it is in the unsafe set
                 if (unsafeSet_(motion))
@@ -213,23 +220,23 @@ base::PlannerStatus ompl::control::HyRRT::solve(const base::PlannerTerminationCo
         if (priority)
         { // Jump
             // Randomly sample the jump inputs
-            jumpInputs = sampleJumpInputs_();
-            control::Control *jumpInput = controlSpace_->allocControl();
+            // jumpInputs = sampleJumpInputs_();
+            // control::Control *jumpInput = controlSpace_->allocControl();
 
-            for (int i = 0; i < jumpInputs.size(); i++)
-            {
-                jumpInput->as<control::RealVectorControlSpace::ControlType>()->values[i] = jumpInputs[i];
-            }
+            // for (int i = 0; i < jumpInputs.size(); i++)
+            // {
+            //     jumpInput->as<control::RealVectorControlSpace::ControlType>()->values[i] = jumpInputs[i];
+            // }
 
             // Instantiate and find new state with discrete simulator
             base::State *newState = si_->allocState();
-            newState = this->discreteSimulator_(previousState, jumpInputs, newState);
+            newState = this->discreteSimulator_(previousState, getJumpControl(compoundControl), newState);
 
             // Create motion to add to tree
             auto *motion = new Motion(siC_);
             si_->copyState(motion->state, newState);
             motion->parent = collisionParentMotion;
-            motion->control = jumpInput;
+            motion->control = compoundControl;
             ompl::base::HybridStateSpace::setStateTime(motion->state, ompl::base::HybridStateSpace::getStateTime(previousState));
             ompl::base::HybridStateSpace::setStateJumps(motion->state, ompl::base::HybridStateSpace::getStateJumps(previousState) + 1);
 
@@ -247,8 +254,8 @@ base::PlannerStatus ompl::control::HyRRT::solve(const base::PlannerTerminationCo
             return constructSolution(solution);
     }
     return base::PlannerStatus::UNKNOWN;
-}
 
+}
 base::PlannerStatus ompl::control::HyRRT::constructSolution(Motion *last_motion)
 {
     vector<Motion *> trajectory;
