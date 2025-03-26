@@ -91,7 +91,10 @@ base::PlannerStatus ompl::control::HyRRT::solve(const base::PlannerTerminationCo
     // Make sure the planner is configured correctly
     // Ensures that there is at least one input state and a goal object specified
     checkValidity();
+    ompl::control::ODESolverPtr backwardODESolver_ (new ompl::control::ODEBasicSolver<> (SpaceInformationPtr(siC_), flowMap_, -0.01));
+    siC_->setStatePropagator(ompl::control::ODESolver::getStatePropagator(backwardODESolver_));
     this->setContinuousSimulator(continuousSimulator);
+
     checkMandatoryParametersSet();
 
     // Define control space

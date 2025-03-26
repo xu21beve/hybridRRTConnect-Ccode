@@ -505,7 +505,7 @@ int main()
 
     // Construct a space information instance for this state space
     ompl::control::SpaceInformationPtr si(new ompl::control::SpaceInformation(hybridSpacePtr, controlSpacePtr));
-    ompl::control::ODESolverPtr odeSolver (new ompl::control::ODEBasicSolver<> (si, &flowODE, -0.01));
+    ompl::control::ODESolverPtr odeSolver (new ompl::control::ODEBasicSolver<> (si, &flowODE, 0.01));
     
     si->setStatePropagator(ompl::control::ODESolver::getStatePropagator(odeSolver));
     si->setPropagationStepSize(-0.01);
@@ -548,6 +548,7 @@ int main()
     // cHyRRT.setJumpInputRange(std::vector<double>{0, 0}, std::vector<double>{0, 0});
     cHyRRT.setUnsafeSet(unsafeSet);
     cHyRRT.setCollisionChecker(collisionChecker);
+    cHyRRT.setFlowMap(flowODE);
     // attempt to solve the planning problem within 10 seconds
     ompl::base::PlannerStatus solved = cHyRRT.solve(ompl::base::timedPlannerTerminationCondition(20));
     // print path to RViz2 data file

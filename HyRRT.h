@@ -44,6 +44,7 @@
 #include "ompl/control/planners/PlannerIncludes.h"
 #include "ompl/control/Control.h"
 #include "HybridStateSpace.h"
+#include <ompl/control/ODESolver.h>
 
 using namespace std;
 
@@ -295,6 +296,11 @@ namespace ompl
                 siC_->getStatePropagator()->propagate(x_cur, control, tFlow, new_state);
                 return new_state;
             };
+
+            void setFlowMap(std::function<void (const ompl::control::ODESolver::StateType &, const ompl::control::Control *, ompl::control::ODESolver::StateType &)> flowMap) 
+            {
+                flowMap_ = flowMap;
+            }
 
             /** 
              * \brief Define the collision checker
@@ -624,6 +630,8 @@ namespace ompl
              * @return The newly propagated state
              */
             std::function<base::State *(const control::Control *u, base::State *curState, double tFlowMax, base::State *newState)> continuousSimulator_;
+
+            std::function<void (const ompl::control::ODESolver::StateType& q, const ompl::control::Control* c, ompl::control::ODESolver::StateType& qdot)> flowMap_;
 
             /// \brief Random sampler for the input. Default constructor always seeds a different value, and returns a uniform real distribution.
             RNG *randomSampler_ = new RNG();
